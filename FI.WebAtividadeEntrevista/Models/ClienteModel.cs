@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FI.AtividadeEntrevista.DML;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -66,6 +67,15 @@ namespace WebAtividadeEntrevista.Models
         /// Telefone
         /// </summary>
         public string Telefone { get; set; }
+
+
+        /// <summary>
+        /// Telefone
+        /// </summary>
+        [Required]
+        [RegularExpression(@"^(\d{3}.\d{3}.\d{3}-\d{2})|(\d{11})$ ou ^\d{3}\x2E\d{3}\x2E\d{3}\x2D\d{2}$", ErrorMessage = "Digite um cpf válido")]
+        public string Cpf { get; set; }
+
 
     }    
 }

@@ -1,15 +1,104 @@
-﻿
+﻿function mascaraCPF(cpf) {
+    let value = cpf;
+
+    // Remove qualquer caractere que não seja número
+    value = value.replace(/\D/g, "");
+
+    // Coloca o ponto após o terceiro e o sexto dígitos
+    value = value.replace(/(\d{3})(\d)/, "$1.$2");
+    value = value.replace(/(\d{3})(\d)/, "$1.$2");
+
+    // Coloca o hífen após o nono dígito
+    value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+    // Retorna o valor do campo de CPF
+    return value;
+}
+
+function AtualizaListaBeneficiarios(beneficiarios) {
+    var tbody = document.querySelector('#tblBeneficiarios tbody');
+
+    tbody.innerHTML = ''; // Limpa o conteúdo da tabela
+
+    beneficiarios.forEach((beneficiario, i) => {
+        var row = `
+        <tr>
+        <td>${mascaraCPF(beneficiario.Cpf)}</td>
+        <td>${beneficiario.Nome}</td>
+        <td>
+            <button class="btn btn-primary" onclick="AlterarBeneficiario(${i},'${beneficiario.Nome}','${beneficiario.Cpf}')">Alterar</button>
+            <button class="btn btn-primary" onclick="ExcluirBeneficiario(${i})">Excluir</button>
+        </td>
+    </tr>`;
+        tbody.innerHTML += row;
+    })
+}
+
+function ExcluirBeneficiario(id) {
+    $.ajax({
+        url: urlDeleteBeneficiario,  // URL para o método do controlador
+        type: 'POST',  // Método de solicitação (POST ou GET)
+        data: { Id: id },  // Dados enviados para o servidor
+        success: function (response) {
+            // Manipule a resposta do servidor
+            AtualizaListaBeneficiarios(response.Data)
+        },
+        error: function (xhr, status, error) {
+            // Manipule qualquer erro que ocorra durante a solicitação
+            ModalDialog("Ocorreu um erro", error);
+        }
+    });
+}
+
+function AlterarBeneficiario(id, nome, cpf) {
+    $("tbody button").prop('disabled', true);
+    $("#BtnAlterarBeneficiario").removeClass("hidden");
+    $("#BtnCancelarBeneficiario").removeClass("hidden");
+    $("#BtnIncluirBeneficiario").addClass("hidden");
+    $("#NomeBeneficiario").val(nome);
+    $("#CpfBeneficiario").val(cpf);
+    $("#IndexBeneficiario").val(id);
+}
+
+function resetModalBeneficiarios() {
+    $("#formCadastroBeneficiarios")[0].reset();
+    $("tbody button").prop('disabled', false);
+    $("#BtnAlterarBeneficiario").addClass("hidden");
+    $("#BtnCancelarBeneficiario").addClass("hidden");
+    $("#BtnIncluirBeneficiario").removeClass("hidden");
+}
+
 $(document).ready(function () {
-    if (obj) {
-        $('#formCadastro #Nome').val(obj.Nome);
-        $('#formCadastro #CEP').val(obj.CEP);
-        $('#formCadastro #Email').val(obj.Email);
-        $('#formCadastro #Sobrenome').val(obj.Sobrenome);
-        $('#formCadastro #Nacionalidade').val(obj.Nacionalidade);
-        $('#formCadastro #Estado').val(obj.Estado);
-        $('#formCadastro #Cidade').val(obj.Cidade);
-        $('#formCadastro #Logradouro').val(obj.Logradouro);
-        $('#formCadastro #Telefone').val(obj.Telefone);
+
+    var tbody = document.querySelector('#tblBeneficiarios tbody');
+
+    $('#BtnModalBeneficiarios').click(() => {
+        $('#ModalBeneficiarios').modal('show');
+    });    
+
+    $('#BtnFecharModalBeneficiarios').click(() => {
+        $('#ModalBeneficiarios').modal('hide');
+        resetModalBeneficiarios();
+    });   
+
+    $("#Cpf").inputmask("mask", { "mask": "999.999.999-99" });
+    $("#CpfBeneficiario").inputmask("mask", { "mask": "999.999.999-99" });
+
+    if (obj.Cliente) {
+        $('#formCadastro #Cpf').val(obj.Cliente.Cpf);
+        $('#formCadastro #Nome').val(obj.Cliente.Nome);
+        $('#formCadastro #CEP').val(obj.Cliente.CEP);
+        $('#formCadastro #Email').val(obj.Cliente.Email);
+        $('#formCadastro #Sobrenome').val(obj.Cliente.Sobrenome);
+        $('#formCadastro #Nacionalidade').val(obj.Cliente.Nacionalidade);
+        $('#formCadastro #Estado').val(obj.Cliente.Estado);
+        $('#formCadastro #Cidade').val(obj.Cliente.Cidade);
+        $('#formCadastro #Logradouro').val(obj.Cliente.Logradouro);
+        $('#formCadastro #Telefone').val(obj.Cliente.Telefone);
+    }
+
+    if (obj.Beneficiarios) {
+        AtualizaListaBeneficiarios(obj.Beneficiarios);
     }
 
     $('#formCadastro').submit(function (e) {
@@ -27,7 +116,8 @@ $(document).ready(function () {
                 "Estado": $(this).find("#Estado").val(),
                 "Cidade": $(this).find("#Cidade").val(),
                 "Logradouro": $(this).find("#Logradouro").val(),
-                "Telefone": $(this).find("#Telefone").val()
+                "Telefone": $(this).find("#Telefone").val(),
+                "Cpf": $(this).find("#Cpf").val()
             },
             error:
             function (r) {
@@ -43,6 +133,67 @@ $(document).ready(function () {
                 window.location.href = urlRetorno;
             }
         });
+    })
+
+    $('#formCadastroBeneficiarios').submit(function (e) {
+        e.preventDefault();
+
+        $.ajax({
+            url: urlPostBeneficiario,
+            method: "POST",
+            data: {
+                "Nome": $(this).find("#NomeBeneficiario").val(),
+                "Cpf": $(this).find("#CpfBeneficiario").val()
+            },
+            error:
+                function (r) {
+                    if (r.status == 400)
+                        ModalDialog("Ocorreu um erro", r.responseJSON);
+                    else if (r.status == 500)
+                        ModalDialog("Ocorreu um erro", "Ocorreu um erro interno no servidor.");
+                },
+            success:
+                function (r) {
+                    const beneficiarios = r.Data;
+                    AtualizaListaBeneficiarios(beneficiarios);
+
+                    $("#formCadastroBeneficiarios")[0].reset();
+                }
+        });
+    })
+
+    $('#BtnAlterarBeneficiario').click(function (e) {
+
+        e.preventDefault();
+        $.ajax({
+            url: urlPutBeneficiario,
+            method: "POST",
+            data: {
+                "model": {
+                    "Nome": $("#NomeBeneficiario").val(),
+                    "Cpf": $("#CpfBeneficiario").val()
+                },
+                "Index": $("#IndexBeneficiario").val(),
+            },
+            error:
+                function (r) {
+                    if (r.status == 400)
+                        ModalDialog("Ocorreu um erro", r.responseJSON);
+                    else if (r.status == 500)
+                        ModalDialog("Ocorreu um erro", "Ocorreu um erro interno no servidor.");
+                },
+            success:
+                function (r) {
+                    const beneficiarios = r.Data;
+                    AtualizaListaBeneficiarios(beneficiarios);
+                    resetModalBeneficiarios();
+                }
+        });
+    });
+
+    $('#BtnCancelarBeneficiario').click((e) => {
+        e.preventDefault();
+        resetModalBeneficiarios();
     })
     
 })
